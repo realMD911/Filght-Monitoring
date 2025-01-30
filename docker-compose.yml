@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  pushgateway:
+    image: prom/pushgateway
+    container_name: pushgateway
+    ports:
+      - "9091:9091"
+    networks:
+      - monitoring
+
+  opensky_scraper:
+    build: .
+    container_name: opensky_scraper
+    environment:
+      - OPEN_SKY_USERNAME=${OPEN_SKY_USERNAME}
+      - OPEN_SKY_PASSWORD=${OPEN_SKY_PASSWORD}
+      - PUSHGATEWAY_URL=http://pushgateway:9091
+    depends_on:
+      - pushgateway
+    networks:
+      - monitoring
+
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    networks:
+      - monitoring
+    depends_on:
+      - pushgateway
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - monitoring
+    depends_on:
+      - prometheus
+
+networks:
+  monitoring:
+    driver: bridge
+
+volumes:
+  grafana_data:
